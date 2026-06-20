@@ -1,51 +1,50 @@
-# Job – Kubernetes Mental Model
+# CronJob – Kubernetes Mental Model
 
-A Job creates Pods that run **to completion** and ensures successful execution.
+A CronJob runs Jobs on a **time-based schedule** (like Linux cron).
 
 ---
 
 # Full YAML Structure
 
 ```text
-Job
+CronJob
 ├── apiVersion: batch/v1
-├── kind: Job
+├── kind: CronJob
 ├── metadata
-│   ├── name: my-job
+│   ├── name: my-cronjob
 │   ├── namespace: default
 │   ├── labels
-│   │   └── app: batch-task
+│   │   └── app: scheduled-task
 │   └── annotations
-│       └── description: run-to-completion workload
+│       └── description: runs scheduled jobs
 └── spec
-    ├── completions: 1
-    ├── parallelism: 1
-    ├── backoffLimit: 3
-    ├── activeDeadlineSeconds: 100
-    ├── selector
-    │   └── matchLabels
-    │       └── app: batch-task
-    └── template
-        ├── metadata
-        │   └── labels
-        │       └── app: batch-task
+    ├── schedule: "*/5 * * * *"
+    ├── timeZone: UTC
+    ├── concurrencyPolicy: Allow
+    ├── startingDeadlineSeconds: 100
+    ├── successfulJobsHistoryLimit: 3
+    ├── failedJobsHistoryLimit: 1
+    └── jobTemplate
         └── spec
-            ├── restartPolicy: Never
-            ├── containers[]
-            │   ├── name: batch-job
-            │   ├── image: busybox
-            │   ├── command
-            │   │   └── ["sh", "-c", "echo Hello && sleep 10"]
-            │   ├── env
-            │   │   └── JOB_MODE: batch
-            │   └── resources
-            │       ├── requests
-            │       │   ├── cpu: 100m
-            │       │   └── memory: 128Mi
-            │       └── limits
-            │           ├── cpu: 200m
-            │           └── memory: 256Mi
-            └── scheduling
-                ├── nodeSelector
-                ├── tolerations
-                └── affinity
+            ├── completions: 1
+            ├── backoffLimit: 3
+            └── template
+                ├── metadata
+                │   └── labels
+                │       └── app: scheduled-task
+                └── spec
+                    ├── restartPolicy: OnFailure
+                    └── containers[]
+                        ├── name: cron-task
+                        ├── image: busybox
+                        ├── command
+                        │   └── ["sh", "-c", "date; echo Hello from CronJob"]
+                        ├── env
+                        │   └── MODE: cron
+                        └── resources
+                            ├── requests
+                            │   ├── cpu: 100m
+                            │   └── memory: 128Mi
+                            └── limits
+                                ├── cpu: 200m
+                                └── memory: 256Mi
