@@ -42,7 +42,7 @@ Pod
 └── spec
     └── nodeSelector
         └── disktype: ssd
-
+```
 Mental Model:
 - Exact match only
 - No logic or operators
@@ -62,7 +62,7 @@ Pod
             │   └── nodeSelectorTerms[]
             │       └── matchExpressions[]
             └── preferredDuringSchedulingIgnoredDuringExecution[]
-
+```
 Mental Model:
 - required = hard rule
 - preferred = soft rule
@@ -81,6 +81,7 @@ Node
         ├── value: gpu
         └── effect: NoSchedule | PreferNoSchedule | NoExecute
 
+```
 Effects:
 - NoSchedule → blocks new Pods
 - PreferNoSchedule → soft avoidance
@@ -102,7 +103,7 @@ Pod
         ├── operator: Equal
         ├── value: gpu
         └── effect: NoSchedule
-
+```
 Mental Model:
 - Taint = restriction on node
 - Toleration = permission on pod
@@ -121,7 +122,7 @@ Pod
                 └── labelSelector
                     └── matchLabels
                         └── app: frontend
-
+```
 Mental Model:
 - “Place me where similar Pods exist”
 
@@ -139,7 +140,7 @@ Pod
                 └── labelSelector
                     └── matchLabels
                         └── app: backend
-
+```
 Mental Model:
 - “Do not run with similar Pods”
 - Used for HA and fault isolation
@@ -158,13 +159,13 @@ PriorityClass
 ├── value: 100000
 ├── globalDefault: false
 └── preemptionPolicy: PreemptLowerPriority
-
+```
 Pod usage:
 ```text
 Pod
 └── spec
     └── priorityClassName: high-priority
-
+```
 Mental Model:
 - Higher value = higher importance
 - Can evict lower priority Pods
