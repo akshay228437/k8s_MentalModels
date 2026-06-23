@@ -13,8 +13,9 @@ Think of it as:
 - Node = building
 - Pod = apartment
 
+---
 Node structure:
-```text
+
 Node
 ├── metadata
 │   ├── labels
@@ -26,6 +27,8 @@ Node
     ├── capacity
     ├── allocatable
     └── conditions
+    
+text```
 
 ---
 
