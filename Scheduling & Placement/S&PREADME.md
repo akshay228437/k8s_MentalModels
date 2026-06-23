@@ -28,7 +28,7 @@ Node
     ├── allocatable
     └── conditions
     
-text```
+```
 
 ---
 
