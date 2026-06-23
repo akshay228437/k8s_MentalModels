@@ -15,7 +15,7 @@ Think of it as:
 
 ---
 Node structure:
-
+```text
 Node
 ├── metadata
 │   ├── labels
