@@ -14,6 +14,7 @@ Think of it as:
 - Pod = apartment
 
 Node structure:
+```text
 Node
 ├── metadata
 │   ├── labels
@@ -33,6 +34,7 @@ Node
 Selects nodes using exact label match.
 
 Pod structure:
+```text
 Pod
 └── spec
     └── nodeSelector
@@ -48,6 +50,7 @@ Mental Model:
 # 3. NodeAffinity – Advanced Node Selection
 
 Pod structure:
+```text
 Pod
 └── spec
     └── affinity
@@ -67,6 +70,7 @@ Mental Model:
 # 4. Taints – Node Repelling Mechanism
 
 Node structure:
+```text
 Node
 └── spec
     └── taints[]
@@ -87,6 +91,7 @@ Mental Model:
 # 5. Tolerations – Pod Permission
 
 Pod structure:
+```text
 Pod
 └── spec
     └── tolerations[]
@@ -104,6 +109,7 @@ Mental Model:
 # 6. PodAffinity – Run Together
 
 Pod structure:
+```text
 Pod
 └── spec
     └── affinity
@@ -121,6 +127,7 @@ Mental Model:
 # 7. PodAntiAffinity – Spread Apart
 
 Pod structure:
+```text
 Pod
 └── spec
     └── affinity
@@ -139,6 +146,7 @@ Mental Model:
 # 8. PriorityClass – Importance of Pods
 
 PriorityClass structure:
+```text
 PriorityClass
 ├── apiVersion: scheduling.k8s.io/v1
 ├── kind: PriorityClass
@@ -149,6 +157,7 @@ PriorityClass
 └── preemptionPolicy: PreemptLowerPriority
 
 Pod usage:
+```text
 Pod
 └── spec
     └── priorityClassName: high-priority
