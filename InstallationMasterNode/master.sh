@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fresh Ubuntu 24.04 or 26.04 EC2 setup. Run with sudo bash.
+# Fresh Ubuntu Server EC2 setup. Run with sudo bash.
 set -Eeuo pipefail
 trap 'echo "ERROR at line $LINENO. Fix the reported problem before continuing." >&2' ERR
 export DEBIAN_FRONTEND=noninteractive
@@ -13,8 +13,9 @@ preflight() {
   [[ $EUID -eq 0 ]] || die 'Run this script with sudo bash.'
   # shellcheck disable=SC1091
   source /etc/os-release
-  [[ $ID == ubuntu && ( $VERSION_ID == 24.04 || $VERSION_ID == 26.04 ) ]] ||
-    die "Use Ubuntu Server 24.04 or 26.04 LTS. Detected: ${PRETTY_NAME:-unknown OS}."
+  [[ $ID == ubuntu ]] || die "Use Ubuntu Server. Detected: ${PRETTY_NAME:-unknown OS}."
+  command -v apt-get >/dev/null || die 'This Ubuntu installation requires apt-get.'
+  [[ -d /run/systemd/system ]] || die 'Run on an Ubuntu instance booted with systemd.'
   echo "Operating system: $PRETTY_NAME"
   [[ $(dpkg --print-architecture) == amd64 ]] || die 'Use an x86_64 instance, such as t3.medium.'
   [[ $(nproc) -ge 2 ]] || die 'At least 2 vCPUs are required.'
