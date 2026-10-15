@@ -4,6 +4,8 @@ set -Eeuo pipefail
 trap 'echo "ERROR at line $LINENO. Fix the reported problem before continuing." >&2' ERR
 export DEBIAN_FRONTEND=noninteractive
 K8S_MINOR=1.34
+K8S_VERSION=1.34.5
+K8S_PACKAGE=1.34.5-1.1
 CRI_SOCKET=unix:///run/containerd/containerd.sock
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -65,17 +67,7 @@ EOF
 }
 
 install_kubernetes() {
-  local available candidate
-  available=$(apt-cache madison kubeadm | awk '{print $3}')
-  if [[ -z $K8S_VERSION ]]; then
-    # The repository is restricted to one minor; choose its highest patch.
-    candidate=$(printf '%s\n' "$available" | sort -V | tail -n1)
-    [[ -n $candidate ]] || die 'No Kubernetes packages found.'
-    K8S_VERSION=${candidate%%-*}
-  fi
-  [[ $K8S_VERSION =~ ^1\.34\.[0-9]+$ ]] || die 'This bundle supports Kubernetes 1.34.x only.'
-  K8S_PACKAGE=$(printf '%s\n' "$available" | awk -v v="$K8S_VERSION" 'index($0,v "-")==1 {print; exit}')
-  [[ -n $K8S_PACKAGE ]] || die "Kubernetes $K8S_VERSION is unavailable in the repository."
+  local package
   for package in kubelet kubeadm kubectl; do
     if dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q 'install ok installed'; then
       [[ $(dpkg-query -W -f='${Version}' "$package") == "$K8S_PACKAGE" ]] ||
@@ -95,10 +87,7 @@ EOF
 }
 
 
-# Optional first argument: exact Kubernetes patch (for example 1.34.x).
-[[ $# -le 1 ]] || die 'Usage: sudo bash master.sh [1.34.PATCH]'
-K8S_VERSION=${1:-}
-[[ -z $K8S_VERSION || $K8S_VERSION =~ ^1\.34\.[0-9]+$ ]] || die 'Supply an exact 1.34.x patch, or omit the argument.'
+[[ $# -eq 0 ]] || die 'Usage: sudo bash master.sh'
 CALICO_VERSION=v3.31.0
 POD_CIDR=${POD_CIDR:-192.168.0.0/16}
 SERVICE_CIDR=${SERVICE_CIDR:-10.96.0.0/12}
@@ -106,7 +95,7 @@ preflight
 prepare_host
 install_kubernetes
 install -d -m 0700 /root/k8s-bootstrap
-# Download all networking manifests before initializing the cluster.
+# Download networking manifests before initializing the cluster.
 for manifest in operator-crds tigera-operator; do
   curl --retry 3 -fsSL "https://raw.githubusercontent.com/projectcalico/calico/${CALICO_VERSION}/manifests/${manifest}.yaml" \
     -o "/root/k8s-bootstrap/${manifest}.yaml"
@@ -133,7 +122,7 @@ kubeadm init --kubernetes-version="v$K8S_VERSION" \
   --apiserver-advertise-address="$NODE_IP" \
   --control-plane-endpoint="${NODE_IP}:6443" \
   --pod-network-cidr="$POD_CIDR" --service-cidr="$SERVICE_CIDR" \
-  --cri-socket="$CRI_SOCKET"
+  --cri-socket="$CRI_SOCKET" --skip-phases=show-join-command --skip-token-print
 export KUBECONFIG=/etc/kubernetes/admin.conf
 admin_user=${SUDO_USER:-root}
 admin_home=$(getent passwd "$admin_user" | cut -d: -f6)
@@ -141,15 +130,6 @@ admin_group=$(id -gn "$admin_user")
 install -d -m 0700 -o "$admin_user" -g "$admin_group" "$admin_home/.kube"
 [[ ! -e $admin_home/.kube/config ]] || cp -an "$admin_home/.kube/config" "$admin_home/.kube/config.before-kubernetes"
 install -m 0600 -o "$admin_user" -g "$admin_group" /etc/kubernetes/admin.conf "$admin_home/.kube/config"
-cat > /root/k8s-bootstrap/versions.txt <<EOF
-Kubernetes: $K8S_VERSION
-Debian package: $K8S_PACKAGE
-Calico: $CALICO_VERSION
-Worker setup: sudo bash worker.sh $K8S_VERSION
-EOF
-# Save a real, short-lived join command before waiting for networking.
-umask 077
-printf 'sudo %s --cri-socket=%s\n' "$(kubeadm token create --ttl 24h --print-join-command)" "$CRI_SOCKET" > /root/k8s-bootstrap/join-command.txt
 kubectl apply --server-side -f /root/k8s-bootstrap/operator-crds.yaml
 kubectl wait --for=condition=Established crd/installations.operator.tigera.io --timeout=120s
 kubectl apply --server-side -f /root/k8s-bootstrap/tigera-operator.yaml
@@ -157,9 +137,4 @@ kubectl apply -f /root/k8s-bootstrap/calico-installation.yaml
 kubectl wait --for=create daemonset/calico-node -n calico-system --timeout=300s
 kubectl rollout status daemonset/calico-node -n calico-system --timeout=300s
 kubectl wait --for=condition=Ready nodes --all --timeout=300s
-echo
-echo 'Master ready. Run this on EACH worker first:'
-echo "sudo bash worker.sh $K8S_VERSION"
-echo 'Then run this on EACH worker (valid for 24 hours):'
-cat /root/k8s-bootstrap/join-command.txt
-echo 'Check the cluster on the master: kubectl get nodes -o wide'
+echo 'Master setup complete. Follow README.md for the remaining steps.'

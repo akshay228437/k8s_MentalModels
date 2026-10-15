@@ -4,6 +4,8 @@ set -Eeuo pipefail
 trap 'echo "ERROR at line $LINENO. Fix the reported problem before continuing." >&2' ERR
 export DEBIAN_FRONTEND=noninteractive
 K8S_MINOR=1.34
+K8S_VERSION=1.34.5
+K8S_PACKAGE=1.34.5-1.1
 CRI_SOCKET=unix:///run/containerd/containerd.sock
 die() { echo "ERROR: $*" >&2; exit 1; }
 
@@ -65,17 +67,7 @@ EOF
 }
 
 install_kubernetes() {
-  local available candidate
-  available=$(apt-cache madison kubeadm | awk '{print $3}')
-  if [[ -z $K8S_VERSION ]]; then
-    # The repository is restricted to one minor; choose its highest patch.
-    candidate=$(printf '%s\n' "$available" | sort -V | tail -n1)
-    [[ -n $candidate ]] || die 'No Kubernetes packages found.'
-    K8S_VERSION=${candidate%%-*}
-  fi
-  [[ $K8S_VERSION =~ ^1\.34\.[0-9]+$ ]] || die 'This bundle supports Kubernetes 1.34.x only.'
-  K8S_PACKAGE=$(printf '%s\n' "$available" | awk -v v="$K8S_VERSION" 'index($0,v "-")==1 {print; exit}')
-  [[ -n $K8S_PACKAGE ]] || die "Kubernetes $K8S_VERSION is unavailable in the repository."
+  local package
   for package in kubelet kubeadm kubectl; do
     if dpkg-query -W -f='${Status}' "$package" 2>/dev/null | grep -q 'install ok installed'; then
       [[ $(dpkg-query -W -f='${Version}' "$package") == "$K8S_PACKAGE" ]] ||
@@ -95,12 +87,9 @@ EOF
 }
 
 
-[[ $# -eq 1 ]] || die 'Usage: sudo bash worker.sh 1.34.PATCH (copy the exact version printed by master.sh)'
-K8S_VERSION=$1
-[[ $K8S_VERSION =~ ^1\.34\.[0-9]+$ ]] || die 'Supply the exact 1.34.x patch printed by master.sh.'
+[[ $# -eq 0 ]] || die 'Usage: sudo bash worker.sh'
 preflight
 prepare_host
 install_kubernetes
 echo
-echo 'Worker prepared. Now paste the sudo kubeadm join command from the master.'
-echo 'The kubelet may restart until you join; that is expected.'
+echo 'Worker installation complete. Continue with README.md.'
