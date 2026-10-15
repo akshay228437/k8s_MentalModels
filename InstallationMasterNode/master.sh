@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Fresh Ubuntu 24.04 EC2 setup. Run with sudo bash.
+# Fresh Ubuntu 24.04 or 26.04 EC2 setup. Run with sudo bash.
 set -Eeuo pipefail
 trap 'echo "ERROR at line $LINENO. Fix the reported problem before continuing." >&2' ERR
 export DEBIAN_FRONTEND=noninteractive
@@ -13,7 +13,9 @@ preflight() {
   [[ $EUID -eq 0 ]] || die 'Run this script with sudo bash.'
   # shellcheck disable=SC1091
   source /etc/os-release
-  [[ $ID == ubuntu && $VERSION_ID == 24.04 ]] || die 'Use a fresh Ubuntu Server 24.04 LTS instance.'
+  [[ $ID == ubuntu && ( $VERSION_ID == 24.04 || $VERSION_ID == 26.04 ) ]] ||
+    die "Use Ubuntu Server 24.04 or 26.04 LTS. Detected: ${PRETTY_NAME:-unknown OS}."
+  echo "Operating system: $PRETTY_NAME"
   [[ $(dpkg --print-architecture) == amd64 ]] || die 'Use an x86_64 instance, such as t3.medium.'
   [[ $(nproc) -ge 2 ]] || die 'At least 2 vCPUs are required.'
   [[ ! -e /etc/kubernetes/kubelet.conf && ! -e /etc/kubernetes/admin.conf && ! -d /var/lib/etcd/member ]] ||
@@ -46,7 +48,7 @@ net.ipv4.ip_forward = 1
 EOF
   sysctl --system
   apt-get -o DPkg::Lock::Timeout=300 update
-  apt-get -o DPkg::Lock::Timeout=300 install -y ca-certificates curl gpg containerd
+  apt-get -o DPkg::Lock::Timeout=300 install -y ca-certificates curl gpg containerd iptables conntrack socat
   mkdir -p /etc/containerd
   [[ ! -e /etc/containerd/config.toml ]] || cp -an /etc/containerd/config.toml /etc/containerd/config.toml.before-kubernetes
   containerd config default > /etc/containerd/config.toml
@@ -56,7 +58,11 @@ EOF
   systemctl enable containerd
   systemctl restart containerd
   systemctl is-active --quiet containerd
-  ctr plugins ls | awk '($2 == "cri" || ($1 == "io.containerd.cri.v1" && $2 == "runtime")) && $NF == "ok" {found=1} END {exit !found}' ||
+  ctr plugins ls | awk '
+    $NF == "ok" && $2 == "cri" {runtime=1; images=1}
+    $NF == "ok" && $1 == "io.containerd.cri.v1" && $2 == "runtime" {runtime=1}
+    $NF == "ok" && $1 == "io.containerd.cri.v1" && $2 == "images" {images=1}
+    END {exit !(runtime && images)}' ||
     die 'containerd CRI plugin is not healthy.'
   install -m 0755 -d /etc/apt/keyrings
   curl --retry 3 -fsSL "https://pkgs.k8s.io/core:/stable:/v${K8S_MINOR}/deb/Release.key" |

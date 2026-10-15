@@ -1,10 +1,12 @@
 # Kubernetes Setup on EC2
 
-Create **3 fresh Ubuntu 24.04 x86_64 EC2 instances** (`t3.medium` or larger): **1 master + 2 workers**, in the same VPC with internet access.
+Create **3 fresh Ubuntu 24.04 or 26.04 LTS x86_64 EC2 instances** (`t3.medium` or larger): **1 master + 2 workers**, in the same VPC with internet access.
 
 Security group: allow **all traffic from the same cluster security group**, and **SSH (22) from your IP**. Your VPC must not overlap `192.168.0.0/16` or `10.96.0.0/12`.
 
 Both scripts install fixed **Kubernetes 1.34.5**. The master script also initializes the cluster, configures kubectl, and installs **Calico 3.31.0** networking.
+
+Upload the updated scripts to this GitHub folder before using the download commands below.
 
 ## 1. Run on the master EC2
 
